@@ -31,7 +31,6 @@ fi
 
 ensure_installed tree-sitter "\nYou need the ${GREEN}tree-sitter${NC} CLI, best to try your package manager"
 ensure_installed saxon "\nYou need ${GREEN}saxon{NC}, best to try your package manager"
-ensure_installed pandoc "\nYou need ${GREEN}pandoc${NC}, best to try your package manager"
 
 # Store the current directory
 OUTPUT_DIR="${PWD}"
@@ -44,13 +43,16 @@ TMP_DIR="$(mktemp -d)"
 
 # Loop over all command line arguments and convert them
 for arg in "$@"; do
+  if [[ "${arg}" != /* ]]; then
+    arg="${OUTPUT_DIR}"/"${arg}"
+  fi
   vimdoc_file="$(basename "${arg}")"
   vimdoc=${vimdoc_file%%.*}
   vimdoc_tmp_dir="${TMP_DIR}/$(basename "$(mktemp -ud)")"
   mkdir "${vimdoc_tmp_dir}"
   tree-sitter parse -x "${arg}" | sed '$d' > "${vimdoc_tmp_dir}"/"${vimdoc}.xml"
   saxon -s:"${vimdoc_tmp_dir}/${vimdoc}.xml" -xsl:"${SCRIPT_DIR}/vim-md.xslt" -o:"${vimdoc_tmp_dir}/${vimdoc}.md"
-  pandoc --metadata title="${vimdoc}" --from markdown-yaml_metadata_block -i "${vimdoc_tmp_dir}/${vimdoc}.md" -o "${OUTPUT_DIR}/${vimdoc}".epub
+  (cd "${OUTPUT_DIR}" && "${SCRIPT_DIR}"/markdown-to-epub.sh "${vimdoc_tmp_dir}/${vimdoc}.md")
   echo "${arg}"
 done
 
